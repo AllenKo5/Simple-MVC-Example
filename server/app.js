@@ -10,6 +10,13 @@ const router = require('./router.js');
 
 const port = process.env.PORT || process.env.NODE_PORT || 3000;
 
+const dbURI = process.env.MONGODB_URI || 'mongodb://localhost/SimpleMVCExample';
+mongoose.connect(dbURI, (err) => {
+  if (err) {
+    console.log(err);
+    throw err;
+  }
+});
 
 const app = express();
 
