@@ -20,8 +20,14 @@ const hostIndex = (req, res) => {
 };
 
 const hostPage1 = async (req, res) => {
-  const docs = await Cat.find({}).lean().exec();
-  console.log(docs);
+  try {
+    const docs = await Cat.find({}).lean().exec();
+    return res.render('page1', { cats: docs });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: "Failed to load cats" });
+  }
+
 };
 
 const hostPage2 = (req, res) => {
@@ -36,21 +42,71 @@ const getName = (req, res) => {
   res.json({ name: lastAdded.name });
 };
 
-const setName = (req, res) => {
+const setName = async (req, res) => {
   if (!req.body.firstname || !req.body.lastname || !req.body.beds) {
     return res.status(400).json({ error: 'firstname, lastname and beds are all required' });
   }
 
+  const catData = {
+    name: `${req.body.firstname} ${req.body.lastname}`,
+    bedsOwned: req.body.beds,
+  };
+
+  const newCat = new Cat(catData);
+
+  try {
+    await newCat.save();
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: 'Failed to create cat' });
+  }
+
+  lastAdded = newCat;
+  return res.json({
+    name: lastAdded.name,
+    beds: lastAdded.bedsOwned,
+  });
 };
 
-const searchName = (req, res) => {
+const searchName = async (req, res) => {
   if (!req.query.name) {
     return res.status(400).json({ error: 'Name is required to perform a search' });
   }
+
+  const query = {
+    name: req.query.name,
+  }
+
+  let doc;
+  try {
+    doc = await Cat.findOne(query).select('-_id name bedsOwned');
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: 'Something went wrong' });
+  }
+
+  if (!doc) {
+    return res.json({ message: 'No cat found' });
+  }
+
+  return res.json(doc);
 };
 
-const updateLast = (req, res) => {
+const updateLast = async (req, res) => {
+  lastAdded.bedsOwned++;
 
+  try {
+    await lastAdded.save();
+  } catch (err) {
+    console.log(err);
+    lastAdded.bedsOwned--;
+    return res.status(500).json({ error: 'Failed to update last cat' });
+  }
+
+  return res.json({
+    name: lastAdded.name,
+    beds: lastAdded.bedsOwned,
+  });
 };
 
 const notFound = (req, res) => {
